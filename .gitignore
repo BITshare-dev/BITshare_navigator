@@ -1,0 +1,15 @@
+.DS_Store
+Thumbs.db
+
+# Local data and generated runtime files should never be published.
+data/
+logs/
+scripts/
+*.db
+*.db-shm
+*.db-wal
+
+# Local editor and environment files.
+.env
+.env.*
+*.log

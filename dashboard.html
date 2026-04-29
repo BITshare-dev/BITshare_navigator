@@ -1,0 +1,434 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="light">
+    <title>BITshare 数据看板</title>
+    <link rel="icon" type="image/svg+xml" href="logo_best.svg">
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Roboto+Slab:wght@100..900&family=Roboto:wght@300;400;500;700&display=swap"
+        rel="stylesheet">
+</head>
+
+<body class="dashboard-page">
+    <a href="index.html" class="dashboard-shortcut" aria-label="返回导航页" title="返回导航页">
+        <svg viewBox="0 0 24 24" width="24" height="24" aria-hidden="true">
+            <path fill="currentColor" d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.42-1.41L7.83 13H20v-2z" />
+        </svg>
+    </a>
+
+    <div class="dashboard-shell">
+        <header class="dashboard-header">
+            <div class="dashboard-brand">
+                <img src="logo_best.svg" alt="BITshare Logo" class="dashboard-logo">
+                <div>
+                    <h1>BITshare 数据看板</h1>
+                </div>
+            </div>
+            <div class="dashboard-updated" id="updatedAt"></div>
+        </header>
+
+        <main>
+            <section class="metric-grid" aria-label="核心指标">
+                <article class="metric-card metric-visits">
+                    <div class="metric-label">总浏览量</div>
+                    <div class="metric-value" id="totalVisits">0</div>
+                    <div class="metric-note" id="visitsDelta"></div>
+                </article>
+                <article class="metric-card metric-downloads">
+                    <div class="metric-label">总下载量</div>
+                    <div class="metric-value" id="totalDownloads">0</div>
+                    <div class="metric-note" id="downloadsDelta"></div>
+                </article>
+            </section>
+
+            <section class="dashboard-panel">
+                <div class="panel-heading">
+                    <div>
+                        <h2>每日趋势</h2>
+                    </div>
+                    <div class="chart-legend">
+                        <span><i class="legend-dot visits-dot"></i>浏览量</span>
+                        <span><i class="legend-dot downloads-dot"></i>下载量</span>
+                    </div>
+                </div>
+                <div class="chart-wrap">
+                    <canvas id="trendChart" width="980" height="420" aria-label="每日趋势图"></canvas>
+                    <div class="chart-tooltip" id="chartTooltip" aria-hidden="true">
+                        <div class="tooltip-date" id="tooltipDate"></div>
+                        <div class="tooltip-row">
+                            <span><i class="legend-dot visits-dot"></i>浏览量</span>
+                            <strong id="tooltipVisits"></strong>
+                        </div>
+                        <div class="tooltip-row">
+                            <span><i class="legend-dot downloads-dot"></i>下载量</span>
+                            <strong id="tooltipDownloads"></strong>
+                        </div>
+                    </div>
+                </div>
+                <div class="window-control" aria-label="趋势窗口控制">
+                    <button type="button" id="prevWindow" aria-label="查看更早数据">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                            <path fill="currentColor" d="M15.41 7.41 14 6l-6 6 6 6 1.41-1.41L10.83 12z" />
+                        </svg>
+                    </button>
+                    <input type="range" id="windowSlider" min="0" step="0.01" value="0" aria-label="滑动选择 29 天趋势窗口">
+                    <button type="button" id="nextWindow" aria-label="查看更新数据">
+                        <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
+                            <path fill="currentColor" d="M8.59 16.59 13.17 12 8.59 7.41 10 6l6 6-6 6z" />
+                        </svg>
+                    </button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script src="dashboard-data.js"></script>
+    <script>
+        const data = window.BITSHARE_DASHBOARD_DATA;
+        const formatNumber = new Intl.NumberFormat("zh-CN");
+        const WINDOW_DAYS = 29;
+
+        function setText(id, value) {
+            document.getElementById(id).textContent = value;
+        }
+
+        function sumRecent(days, key) {
+            return data.daily.slice(-days).reduce((sum, item) => sum + item[key], 0);
+        }
+
+        function renderMetrics() {
+            setText("totalVisits", formatNumber.format(data.totals.visits));
+            setText("totalDownloads", formatNumber.format(data.totals.downloads));
+            setText("visitsDelta", `近 7 天 ${formatNumber.format(sumRecent(7, "visits"))}`);
+            setText("downloadsDelta", `近 7 天 ${formatNumber.format(sumRecent(7, "downloads"))}`);
+            setText("updatedAt", `更新于 ${data.generatedAt}`);
+        }
+
+        function drawArea(ctx, points, baseY, colorStart, colorEnd) {
+            const gradient = ctx.createLinearGradient(0, Math.min(...points.map((point) => point.y)), 0, baseY);
+            gradient.addColorStop(0, colorStart);
+            gradient.addColorStop(1, colorEnd);
+
+            ctx.beginPath();
+            points.forEach((point, index) => {
+                if (index === 0) {
+                    ctx.moveTo(point.x, point.y);
+                } else {
+                    ctx.lineTo(point.x, point.y);
+                }
+            });
+            ctx.lineTo(points[points.length - 1].x, baseY);
+            ctx.lineTo(points[0].x, baseY);
+            ctx.closePath();
+            ctx.fillStyle = gradient;
+            ctx.fill();
+        }
+
+        function drawLine(ctx, points, color) {
+            ctx.beginPath();
+            points.forEach((point, index) => {
+                if (index === 0) {
+                    ctx.moveTo(point.x, point.y);
+                } else {
+                    ctx.lineTo(point.x, point.y);
+                }
+            });
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 4;
+            ctx.lineJoin = "round";
+            ctx.lineCap = "round";
+            ctx.stroke();
+
+            points.forEach((point) => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 4, 0, Math.PI * 2);
+                ctx.fillStyle = "#fff";
+                ctx.fill();
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            });
+        }
+
+        const chartState = {
+            items: [],
+            points: [],
+            activeIndex: null,
+            frame: null,
+            plot: null,
+            windowStart: Math.max(0, data.daily.length - WINDOW_DAYS)
+        };
+
+        function getMousePosition(canvas, event) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: (event.clientX - rect.left) * (canvas.width / rect.width),
+                y: (event.clientY - rect.top) * (canvas.height / rect.height)
+            };
+        }
+
+        function renderChart(activeIndex = null) {
+            const canvas = document.getElementById("trendChart");
+            const ctx = canvas.getContext("2d");
+            const width = canvas.width;
+            const height = canvas.height;
+            const padding = { top: 42, right: 92, bottom: 58, left: 72 };
+            const plotWidth = width - padding.left - padding.right;
+            const plotHeight = height - padding.top - padding.bottom;
+            const markerRadius = 7;
+            const pointGap = plotWidth / (WINDOW_DAYS - 1);
+            const windowEnd = chartState.windowStart + WINDOW_DAYS - 1;
+            const firstIndex = Math.max(0, Math.floor(chartState.windowStart));
+            const lastIndex = Math.min(data.daily.length - 1, Math.ceil(windowEnd));
+            const chartItems = data.daily.slice(firstIndex, lastIndex + 1).map((item, offset) => ({
+                item,
+                sourceIndex: firstIndex + offset
+            }));
+            const visibleItems = chartItems.filter((entry) => {
+                const x = padding.left + (entry.sourceIndex - chartState.windowStart) * pointGap;
+                return x >= padding.left && x <= padding.left + plotWidth;
+            });
+            chartState.items = chartItems.map((entry) => entry.item);
+            chartState.plot = { padding, plotWidth, plotHeight };
+            const maxVisits = Math.max(1, ...visibleItems.map((entry) => entry.item.visits));
+            const maxDownloads = Math.max(1, ...visibleItems.map((entry) => entry.item.downloads));
+
+            ctx.clearRect(0, 0, width, height);
+            ctx.font = "14px Roboto, sans-serif";
+            ctx.textBaseline = "middle";
+
+            ctx.fillStyle = "rgba(255, 255, 255, 0.72)";
+            ctx.fillRect(padding.left, padding.top, plotWidth, plotHeight);
+
+            for (let i = 0; i <= 4; i += 1) {
+                const y = padding.top + (plotHeight / 4) * i;
+                ctx.beginPath();
+                ctx.moveTo(padding.left, y);
+                ctx.lineTo(width - padding.right, y);
+                ctx.strokeStyle = "#e6ecef";
+                ctx.lineWidth = 1;
+                ctx.stroke();
+            }
+
+            const toPoints = (key, max) => chartItems.map((entry, index) => ({
+                x: padding.left + (entry.sourceIndex - chartState.windowStart) * pointGap,
+                y: padding.top + plotHeight - (entry.item[key] / max) * plotHeight,
+                day: entry.item.day,
+                value: entry.item[key],
+                itemIndex: index
+            }));
+
+            const downloadPoints = toPoints("downloads", maxDownloads);
+            const visitPoints = toPoints("visits", maxVisits);
+            chartState.points = visitPoints.map((point, index) => ({
+                x: point.x,
+                visitsY: point.y,
+                downloadsY: downloadPoints[index].y
+            }));
+
+            ctx.save();
+            ctx.beginPath();
+            ctx.rect(
+                padding.left - markerRadius,
+                padding.top - markerRadius,
+                plotWidth + markerRadius * 2,
+                plotHeight + markerRadius * 2
+            );
+            ctx.clip();
+            drawArea(ctx, downloadPoints, padding.top + plotHeight, "rgba(255, 152, 0, 0.16)", "rgba(255, 152, 0, 0)");
+            drawArea(ctx, visitPoints, padding.top + plotHeight, "rgba(47, 128, 237, 0.14)", "rgba(47, 128, 237, 0)");
+            drawLine(ctx, downloadPoints, "#f39c12");
+            drawLine(ctx, visitPoints, "#2f80ed");
+            ctx.restore();
+
+            ctx.fillStyle = "#607d8b";
+            ctx.textAlign = "right";
+            ctx.fillText(formatNumber.format(maxVisits), padding.left - 14, padding.top);
+            ctx.fillText("浏览量", padding.left - 14, padding.top + 22);
+
+            ctx.textAlign = "left";
+            ctx.fillText(formatNumber.format(maxDownloads), width - padding.right + 12, padding.top);
+            ctx.fillText("下载量", width - padding.right + 12, padding.top + 22);
+
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#546e7a";
+            const latestIndex = data.daily.length - 1;
+            const labelIndexes = [];
+            for (let index = latestIndex; index >= 0; index -= 7) {
+                labelIndexes.unshift(index);
+            }
+            labelIndexes.forEach((sourceIndex) => {
+                const item = data.daily[sourceIndex];
+                const x = padding.left + (sourceIndex - chartState.windowStart) * pointGap;
+                if (item && x >= padding.left && x <= padding.left + plotWidth) {
+                    ctx.fillText(item.day.slice(5), x, height - 24);
+                }
+            });
+
+            if (activeIndex !== null) {
+                const active = chartState.points[activeIndex];
+
+                ctx.beginPath();
+                ctx.moveTo(active.x, padding.top);
+                ctx.lineTo(active.x, padding.top + plotHeight);
+                ctx.strokeStyle = "rgba(55, 71, 79, 0.36)";
+                ctx.lineWidth = 2;
+                ctx.setLineDash([6, 6]);
+                ctx.stroke();
+                ctx.setLineDash([]);
+
+                [
+                    { y: active.downloadsY, color: "#f39c12" },
+                    { y: active.visitsY, color: "#2f80ed" }
+                ].forEach((dot) => {
+                    ctx.beginPath();
+                    ctx.arc(active.x, dot.y, 6, 0, Math.PI * 2);
+                    ctx.fillStyle = "#fff";
+                    ctx.fill();
+                    ctx.strokeStyle = dot.color;
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                });
+            }
+        }
+
+        function updateWindowControls() {
+            const maxStart = Math.max(0, data.daily.length - WINDOW_DAYS);
+            const slider = document.getElementById("windowSlider");
+            const prevButton = document.getElementById("prevWindow");
+            const nextButton = document.getElementById("nextWindow");
+            const progress = maxStart === 0 ? 100 : (chartState.windowStart / maxStart) * 100;
+
+            slider.max = String(maxStart);
+            slider.value = String(chartState.windowStart);
+            slider.style.setProperty("--range-progress", `${progress}%`);
+            prevButton.disabled = chartState.windowStart <= 0;
+            nextButton.disabled = chartState.windowStart >= maxStart;
+        }
+
+        function setWindowStart(start) {
+            const maxStart = Math.max(0, data.daily.length - WINDOW_DAYS);
+            chartState.windowStart = Math.max(0, Math.min(start, maxStart));
+            chartState.activeIndex = null;
+            hideTooltip();
+            scheduleChart(null);
+            updateWindowControls();
+        }
+
+        function updateTooltip(index) {
+            const tooltip = document.getElementById("chartTooltip");
+            const canvas = document.getElementById("trendChart");
+            const point = chartState.points[index];
+            const item = chartState.items[index];
+            const canvasRect = canvas.getBoundingClientRect();
+            const scaleX = canvasRect.width / canvas.width;
+            const scaleY = canvasRect.height / canvas.height;
+            const tooltipWidth = tooltip.offsetWidth || 210;
+            const tooltipHeight = tooltip.offsetHeight || 112;
+            const canvasX = point.x * scaleX;
+            const canvasY = Math.min(point.visitsY, point.downloadsY) * scaleY;
+            const placeLeft = canvasX + tooltipWidth + 28 > canvasRect.width;
+            const x = placeLeft ? canvasX - tooltipWidth - 18 : canvasX + 18;
+            const y = Math.max(12, Math.min(canvasY - tooltipHeight / 2, canvasRect.height - tooltipHeight - 12));
+
+            document.getElementById("tooltipDate").textContent = item.day;
+            document.getElementById("tooltipVisits").textContent = formatNumber.format(item.visits);
+            document.getElementById("tooltipDownloads").textContent = formatNumber.format(item.downloads);
+            tooltip.style.transform = `translate3d(${x}px, ${y}px, 0)`;
+            tooltip.classList.add("is-visible");
+        }
+
+        function hideTooltip() {
+            document.getElementById("chartTooltip").classList.remove("is-visible");
+        }
+
+        function scheduleChart(index) {
+            if (chartState.frame) {
+                cancelAnimationFrame(chartState.frame);
+            }
+
+            chartState.frame = requestAnimationFrame(() => {
+                renderChart(index);
+                if (index !== null) {
+                    updateTooltip(index);
+                }
+                chartState.frame = null;
+            });
+        }
+
+        function bindChartHover() {
+            const canvas = document.getElementById("trendChart");
+
+            canvas.addEventListener("mousemove", (event) => {
+                const position = getMousePosition(canvas, event);
+                const plot = chartState.plot;
+                const outsidePlot = !plot ||
+                    position.x < plot.padding.left ||
+                    position.x > canvas.width - plot.padding.right ||
+                    position.y < plot.padding.top ||
+                    position.y > plot.padding.top + plot.plotHeight;
+
+                if (outsidePlot) {
+                    if (chartState.activeIndex !== null) {
+                        chartState.activeIndex = null;
+                        hideTooltip();
+                        scheduleChart(null);
+                    }
+                    return;
+                }
+
+                const nearestIndex = chartState.points.reduce((nearest, point, index) => {
+                    if (point.x < plot.padding.left || point.x > canvas.width - plot.padding.right) {
+                        return nearest;
+                    }
+                    const distance = Math.abs(point.x - position.x);
+                    return distance < nearest.distance ? { index, distance } : nearest;
+                }, { index: 0, distance: Infinity }).index;
+
+                if (nearestIndex !== chartState.activeIndex) {
+                    chartState.activeIndex = nearestIndex;
+                    scheduleChart(nearestIndex);
+                }
+            });
+
+            canvas.addEventListener("mouseleave", () => {
+                chartState.activeIndex = null;
+                hideTooltip();
+                scheduleChart(null);
+            });
+
+            window.addEventListener("resize", () => {
+                if (chartState.activeIndex !== null) {
+                    updateTooltip(chartState.activeIndex);
+                }
+            });
+        }
+
+        function bindWindowControls() {
+            const slider = document.getElementById("windowSlider");
+            document.getElementById("prevWindow").addEventListener("click", () => {
+                setWindowStart(chartState.windowStart - 1);
+            });
+            document.getElementById("nextWindow").addEventListener("click", () => {
+                setWindowStart(chartState.windowStart + 1);
+            });
+            slider.addEventListener("input", (event) => {
+                setWindowStart(Number(event.target.value));
+            });
+        }
+
+        renderMetrics();
+        renderChart();
+        updateWindowControls();
+        bindChartHover();
+        bindWindowControls();
+    </script>
+</body>
+
+</html>
