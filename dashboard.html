@@ -45,6 +45,11 @@
                     <div class="metric-value" id="totalDownloads">0</div>
                     <div class="metric-note" id="downloadsDelta"></div>
                 </article>
+                <article class="metric-card metric-running">
+                    <div class="metric-label">已运行</div>
+                    <div class="metric-value"><span id="runningDays">0</span> 天</div>
+                    <div class="metric-note">有数据的自然日</div>
+                </article>
             </section>
 
             <section class="dashboard-panel">
@@ -103,8 +108,10 @@
         }
 
         function renderMetrics() {
+            const runningDays = data.runningDays ?? data.daily.filter((item) => item.visits > 0 || item.downloads > 0).length;
             setText("totalVisits", formatNumber.format(data.totals.visits));
             setText("totalDownloads", formatNumber.format(data.totals.downloads));
+            setText("runningDays", formatNumber.format(runningDays));
             setText("visitsDelta", `近 7 天 ${formatNumber.format(sumRecent(7, "visits"))}`);
             setText("downloadsDelta", `近 7 天 ${formatNumber.format(sumRecent(7, "downloads"))}`);
             setText("updatedAt", `更新于 ${data.generatedAt}`);

@@ -1,5 +1,7 @@
 window.BITSHARE_DASHBOARD_DATA = {
     generatedAt: "2026-04-28 22:16:40 +08:00",
+    timezone: "Asia/Shanghai",
+    runningDays: 41,
     totals: {
         visits: 5562,
         downloads: 102736
