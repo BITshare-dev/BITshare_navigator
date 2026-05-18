@@ -42,7 +42,7 @@
                         </svg>
                     </div>
                     <h2 class="card-title">BITshare 主站</h2>
-                    <p class="card-description">这是我们的船新主站点，希望你能用的开心🤩🤩🤩</p>
+                    <p class="card-description">这是我们的船新主站点，希望你能用的开心🤩🤩🤩</br>注：请在校园网环境中使用！</p>
                 </div>
                 <div class="card-action">
                     <span>访问站点</span>
@@ -90,11 +90,26 @@
         </main>
 
         <footer class="footer">
-            <p style="margin-top: 0.5rem;">联系我们： QQ:1215721590 项目交流群:991547824 邀请码:BITshare</p>
+            <div class="footer-links" aria-label="页脚快捷入口">
+                <button type="button" class="footer-link-btn" data-popup="friends">友情链接</button>
+                <span class="footer-divider">｜</span>
+                <button type="button" class="footer-link-btn" data-popup="contact">联系我们</button>
+                <span class="footer-divider">｜</span>
+                <button type="button" class="footer-link-btn" data-popup="coffee">请作者喝咖啡</button>
+            </div>
         </footer>
     </div>
 
-    <!-- Notification Popup -->
+    <div id="info-modal" class="info-modal" aria-hidden="true">
+        <div class="info-modal-backdrop" data-close-modal></div>
+        <div class="info-modal-dialog" role="dialog" aria-modal="true" aria-labelledby="info-modal-title">
+            <button type="button" class="info-modal-close" aria-label="关闭弹窗" data-close-modal>&times;</button>
+            <h2 id="info-modal-title" class="info-modal-title"></h2>
+            <div id="info-modal-body" class="info-modal-body"></div>
+        </div>
+    </div>
+
+    <!-- Notification Popup (保留原始代码，方便后续恢复)
     <div id="notification-popup" class="notification-popup">
         <div class="popup-content">
             <span class="close-btn" onclick="closePopup()">&times;</span>
@@ -112,6 +127,71 @@
                 }, 300);
             }
         }
+    </script>
+    -->
+
+    <script>
+        const infoModal = document.getElementById('info-modal');
+        const infoModalTitle = document.getElementById('info-modal-title');
+        const infoModalBody = document.getElementById('info-modal-body');
+
+        const popupContent = {
+            friends: {
+                title: '友情链接',
+                body: `
+                    <div class="info-link-list-text">
+                        <a class="info-link-text" href="https://bit101.cn/" target="_blank" rel="noopener noreferrer">BIT101</a>
+                        </div>
+                `
+            },
+            contact: {
+                title: '联系我们',
+                body: `
+                    <p class="info-modal-text">QQ:1215721590 项目交流群:991547824(邀请码:BITshare)</p>
+                    <p class="info-modal-text">GitHub 项目组：<a class="info-link-text" href="https://github.com/BITshare-dev" target="_blank" rel="noopener noreferrer">BITshare 项目组</a></p>
+                `
+            },
+            coffee: {
+                title: '请作者喝咖啡',
+                body: `
+                    <p class="info-modal-text">如果你觉得该项目对你真的有帮助，可以给仓库点个 star 或者请作者喝一杯咖啡😃</p>
+                    <img class="info-modal-qr" src="cash.jpg" alt="请作者喝咖啡收款码">
+                `
+            }
+        };
+
+        function openInfoModal(key) {
+            const content = popupContent[key];
+            if (!content) return;
+
+            infoModalTitle.textContent = content.title;
+            infoModalBody.innerHTML = content.body;
+            infoModal.classList.add('is-open');
+            infoModal.setAttribute('aria-hidden', 'false');
+            document.body.classList.add('modal-open');
+        }
+
+        function closeInfoModal() {
+            infoModal.classList.remove('is-open');
+            infoModal.setAttribute('aria-hidden', 'true');
+            document.body.classList.remove('modal-open');
+        }
+
+        document.querySelectorAll('[data-popup]').forEach((button) => {
+            button.addEventListener('click', () => openInfoModal(button.dataset.popup));
+        });
+
+        infoModal.addEventListener('click', (event) => {
+            if (event.target.hasAttribute('data-close-modal')) {
+                closeInfoModal();
+            }
+        });
+
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && infoModal.classList.contains('is-open')) {
+                closeInfoModal();
+            }
+        });
     </script>
 </body>
 
