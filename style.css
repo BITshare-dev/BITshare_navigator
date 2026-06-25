@@ -933,7 +933,6 @@ body.modal-open {
     }
 }
 
-/* Notification Popup styles (已注释)
 .notification-popup {
     position: fixed;
     top: 20px;
@@ -978,7 +977,6 @@ body.modal-open {
     transition: color 0.2s;
     padding: 2px;
 }
-*/
 
 .close-btn:hover {
     color: #333;
