@@ -1781,3 +1781,12 @@ body:not(.dashboard-page)::after {
         transition: none;
     }
 }
+
+/* Increase the type scale across the landing page and dashboard for readability. */
+html {
+    font-size: 112.5%;
+}
+
+.close-btn {
+    font-size: 22px;
+}
