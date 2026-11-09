@@ -1,10 +1,10 @@
 window.BITSHARE_DASHBOARD_DATA = {
-    "generatedAt": "2026-11-09 02:00:12 +08:00",
+    "generatedAt": "2026-11-10 02:00:13 +08:00",
     "timezone": "Asia/Shanghai",
-    "runningDays": 202,
+    "runningDays": 203,
     "totals": {
-        "visits": 53669,
-        "downloads": 1265718
+        "visits": 54259,
+        "downloads": 1278647
     },
     "daily": [
         {
@@ -1014,8 +1014,13 @@ window.BITSHARE_DASHBOARD_DATA = {
         },
         {
             "day": "2026-11-08",
-            "visits": 482,
-            "downloads": 15855
+            "visits": 488,
+            "downloads": 15870
+        },
+        {
+            "day": "2026-11-09",
+            "visits": 584,
+            "downloads": 12914
         }
     ]
 };
